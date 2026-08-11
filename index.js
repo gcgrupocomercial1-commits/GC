@@ -1,32 +1,35 @@
+// index.js - ARRANQUE Y VERIFICACIÓN DE CONEXIÓN POSTGRESQL
 const express = require('express');
-const { query } = require('./src/db');
+const path = require('path');
+const db = require('./src/db'); // Módulo de conexión a Postgres que ya tienes en src/db.js
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Endpoint de salud del sistema (Health Check) para monitoreo en la nube
+// Ruta de prueba para comprobar el servidor y PostgreSQL de un solo golpe
 app.get('/health', async (req, res) => {
     try {
-        const dbCheck = await query('SELECT NOW()');
+        const dbCheck = await db.query('SELECT NOW() AS database_time, CURRENT_DATABASE() AS db_name');
         res.status(200).json({
-            status: 'SUCCESS',
-            message: 'Sistema CRM operando correctamente',
-            database_time: dbCheck.rows[0].now,
-            environment: process.env.NODE_ENV || 'development'
+            status: 'ONLINE',
+            message: 'Servidor y PostgreSQL conectados exitosamente',
+            database: dbCheck.rows[0].db_name,
+            tiempo_servidor_db: dbCheck.rows[0].database_time
         });
     } catch (error) {
-        console.error('Fallo en la prueba de salud:', error);
         res.status(500).json({
-            status: 'ERROR',
-            message: 'No se pudo establecer conexión con la base de datos GC',
+            status: 'ERROR_DB',
+            message: 'El servidor está activo, pero falló la conexión con PostgreSQL',
             error: error.message
         });
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 [Server]: Servidor CRM corriendo de forma óptima en el puerto ${PORT}`);
+    console.log(`[Servidor GC]: Corriendo en http://localhost:${PORT}`);
+    console.log(`[Base de Datos]: Conectando a PostgreSQL (${process.env.DB_HOST || 'localhost'})`);
 });
